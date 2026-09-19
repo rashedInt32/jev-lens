@@ -1,0 +1,19 @@
+{
+  "name": "jev-lens",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Calibrated review verdicts for Claude Code edits, judged by TypeSafe Jev. Hook plugin; pairs with jev-lens.nvim.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rashedInt32/jev-lens.git"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "validate": "claude plugin validate ."
+  },
+  "engines": {
+    "node": ">=20.12"
+  }
+}
