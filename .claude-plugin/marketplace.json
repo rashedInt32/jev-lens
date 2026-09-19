@@ -1,0 +1,28 @@
+{
+  "name": "jev-lens",
+  "description": "Calibrated review verdicts for Claude Code edits, judged by TypeSafe Jev.",
+  "owner": {
+    "name": "rashed parvez",
+    "url": "https://github.com/rashedInt32"
+  },
+  "plugins": [
+    {
+      "name": "jev-lens",
+      "source": "./",
+      "displayName": "Jev Lens",
+      "description": "After a Claude Code session stops, judges the agent's edits with TypeSafe Jev and writes a verdict: do you need to look, which files, what kind, and which leftover debris to strip. Pairs with jev-lens.nvim.",
+      "version": "0.2.0",
+      "homepage": "https://github.com/rashedInt32/jev-lens",
+      "repository": "https://github.com/rashedInt32/jev-lens",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "hooks",
+        "typesafe",
+        "jev",
+        "review"
+      ],
+      "category": "productivity"
+    }
+  ]
+}
