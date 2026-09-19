@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // The judge. Spawned detached by the Stop hook, or run by hand from nvim.
 //
-//   node bin/judge.mjs --cwd <dir> [--session <id>] [--reason stop|manual] [--reviewed]
+//   node bin/judge.mjs --cwd <dir> [--session <id>] [--reason stop|manual]
+//                      [--reviewed] [--force]
 //
 // Diffs the repo against its baseline tree, asks Jev, writes verdict.json.
 // Any failure logs a line and writes nothing. Silence is never green.
@@ -24,6 +25,7 @@ function parseArgs(argv) {
     else if (a === "--session") args.session = argv[++i];
     else if (a === "--reason") args.reason = argv[++i];
     else if (a === "--reviewed") args.reviewed = true;
+    else if (a === "--force") args.force = true;
   }
   return args;
 }
@@ -100,7 +102,9 @@ export async function judge(args, config = readConfig()) {
     log(config, ["judge", config.mode, "no-diff", root]);
     return { outcome: "no-diff", root };
   }
-  if (tree === state.last_judged_tree && readVerdict(config, root)) {
+  // --force is a person pressing re-judge. They know the tree has not moved
+  // and are asking anyway, so spend the call.
+  if (!args.force && tree === state.last_judged_tree && readVerdict(config, root)) {
     log(config, ["judge", config.mode, "coalesced", root, tree]);
     return { outcome: "coalesced", root };
   }
@@ -151,19 +155,24 @@ export async function judge(args, config = readConfig()) {
     log(config, ["judge", config.mode, outcome, root, detail ?? ""]);
     return { outcome, root };
   };
-  // A formatter run: nothing changed once whitespace is ignored.
-  if (!changedIgnoringWhitespace(root, state.baseline, tree, kept.map((f) => f.path))) {
-    return settle("whitespace-only");
-  }
-  // Only comment lines were deleted: no behavior effect, nothing to strip.
-  if (commentRemovalOnly(kept)) {
-    return settle("comment-removal-only");
-  }
-  // No agent edit on record since the baseline: this is the human's typing.
-  if (config.requireEdits) {
-    const since = state.baseline_at ?? "";
-    const agentEdits = (state.edits ?? []).filter((e) => typeof e.ts === "string" && e.ts >= since);
-    if (agentEdits.length === 0) return settle("no-agent-edits");
+  // These three are heuristics for "not worth asking about". --force is a
+  // person overriding that judgment, so they do not apply. Skipping them also
+  // keeps a forced re-judge from deleting the verdict it was asked to refresh.
+  if (!args.force) {
+    // A formatter run: nothing changed once whitespace is ignored.
+    if (!changedIgnoringWhitespace(root, state.baseline, tree, kept.map((f) => f.path))) {
+      return settle("whitespace-only");
+    }
+    // Only comment lines were deleted: no behavior effect, nothing to strip.
+    if (commentRemovalOnly(kept)) {
+      return settle("comment-removal-only");
+    }
+    // No agent edit on record since the baseline: this is the human's typing.
+    if (config.requireEdits) {
+      const since = state.baseline_at ?? "";
+      const agentEdits = (state.edits ?? []).filter((e) => typeof e.ts === "string" && e.ts >= since);
+      if (agentEdits.length === 0) return settle("no-agent-edits");
+    }
   }
   // Tiny diffs are judged, so the log and the debris list exist, but the
   // verdict carries a reason never to open a popup for it.

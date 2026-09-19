@@ -98,6 +98,12 @@ test("end to end: agent edits, judge writes a verdict in the agreed shape", asyn
   const again = await judge({ cwd: root }, config);
   assert.equal(again.outcome, "coalesced");
   assert.equal(mock.requests.length, 2);
+
+  // --force is a person pressing re-judge: ask again, and keep the verdict.
+  const forced = await judge({ cwd: root, force: true }, config);
+  assert.equal(forced.outcome, "verdict");
+  assert.equal(mock.requests.length, 4);
+  assert.ok(readVerdict(config, root));
 });
 
 test("low kind confidence shows unsure but keeps the top pick; data dir inside the repo is skipped", async (t) => {
