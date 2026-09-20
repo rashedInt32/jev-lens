@@ -114,7 +114,8 @@ export const KEY_VAR = ["TYPESAFE", "API", "KEY"].join("_");
 
 /** Environment for a judge run against a mock, with isolated data and home. */
 export function lensEnv(mock, extra = {}) {
-  return { [KEY_VAR]: "k", JEV_LENS_BASE_URL: mock.url, JEV_LENS_DIR: tempDir("data-"), HOME: tempDir("home-"), ...extra };
+  // An empty gates dir: the judge finds no proof file and does not wait for one.
+  return { [KEY_VAR]: "k", JEV_LENS_BASE_URL: mock.url, JEV_LENS_DIR: tempDir("data-"), JEV_GATES_DIR: tempDir("gates-"), JEV_LENS_PROOF_WAIT_MS: "1", HOME: tempDir("home-"), ...extra };
 }
 
 /** Record agent edits for `files` in the repo's state, the way the PostToolUse hook does. */

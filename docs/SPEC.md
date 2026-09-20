@@ -59,6 +59,7 @@ land for the human who signs off. They are complementary and independent.
 | 29 | Non-git dirs | Skipped in active, logged in shadow. |
 | 30 | Quiet gates, judge side (2026-09-19) | Before any request: skip when nothing changed once whitespace is ignored; skip when only comment lines were deleted; skip when the edit log shows no agent edit since the baseline (`JEV_LENS_REQUIRE_EDITS=0` disables); judge but mark `notify_only: "tiny"` when ≤ `JEV_LENS_TINY_LINES` (3) lines changed and no new file; never offer `out_of_scope` with no prompt on record; ignore coverage, `.turbo`, `.cache`, `tmp/`, logs, `.DS_Store`, tsbuildinfo. |
 | 31 | Quiet gates, nvim side (2026-09-19) | Notify line instead of popup when: `notify_only` set; overall green; no file flagged; every flagged file is cosmetic; the verdict follows a strip; the flagged set is a subset of one the user dismissed with q/Esc (cleared by reviewed). In insert mode the popup waits for InsertLeave. Header reads `look: unsure · no file stands out` when the overall and the rows disagree. |
+| 33 | Unverified changes from jev-gates (2026-09-20) | The jev-gates proof gate writes `<gates-dir>/proof/<repo-key>.json` at every stop, keyed with the same sha256 formula. The judge reads it after its own request, waiting up to `JEV_LENS_PROOF_WAIT_MS` (3000) for one judged in the last ten seconds, and copies the risky-and-unproven rows into `verdict.unverified`. A file older than the baseline is ignored. nvim renders them as rows under the files and treats a non-empty list as a reason to open the popup even when no file is flagged. `JEV_LENS_PROOF=0` disables. |
 | 32 | Edit log covers Bash (2026-09-19) | PostToolUse on Bash runs the jev-gates shell write detector; unresolvable script writes are logged as `(script)`. Pulled forward from v1.5 because gate 30 depends on it. |
 
 ## 4. Data layout
@@ -124,6 +125,11 @@ at most one prompt or edit entry and never corrupts the file.
     { "file": "src/app.ts", "line": 12, "end_line": 14, "kind": "comment",
       "lines": ["// Grab the session", "// and refresh it"], "p": 0.92 }
   ],
+  "unverified": [
+    { "file": "src/app.ts", "line": 40, "kind": "branch",
+      "summary": "branch changed in refresh: if (!token) return null;", "p_risk": 0.91, "p_evidence": 0.05 }
+  ],
+  "proof": { "judged_at": "...", "session_id": "...", "decision": "block" },
   "prompts": ["add session refresh to the auth flow"],
   "reviewed": false,
   "stale": false

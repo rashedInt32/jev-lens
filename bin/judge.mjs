@@ -12,6 +12,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { candidates, commentRemovalOnly } from "../lib/debris.mjs";
 import { clip, log, readConfig, readKey, writeJsonAtomic } from "../lib/jev.mjs";
+import { readProof } from "../lib/proof.mjs";
 import { isIgnored, redact } from "../lib/redact.mjs";
 import { changedIgnoringWhitespace, deleteVerdict, diffTrees, headTree, isClean, readState, readVerdict, repoDir, repoRoot, snapshotTree, writeState, writeVerdict } from "../lib/repo.mjs";
 import { collectRules } from "../lib/rules.mjs";
@@ -184,6 +185,10 @@ export async function judge(args, config = readConfig()) {
   const rules = collectRules(root, { max: config.maxRules, home: config.home }).map((r) => r.text);
   const debrisCandidates = candidates(judgedSet);
 
+  // A proof result written before this judge started is from an earlier
+  // stop. Allow a little skew so a gate that finished just before us counts.
+  const fresh = new Date(Date.now() - 10_000).toISOString();
+
   let judged;
   try {
     judged = await judgeAll({ config, key, files: judgedSet, prompts, rules, candidates: debrisCandidates });
@@ -191,6 +196,8 @@ export async function judge(args, config = readConfig()) {
     log(config, ["judge", config.mode, "error", root, error?.message ?? String(error)]);
     return { outcome: "error", root, error };
   }
+
+  const proof = await readProof(config, root, { fresh, since: state.baseline_at });
 
   const verdict = composeVerdict({
     config,
@@ -204,6 +211,7 @@ export async function judge(args, config = readConfig()) {
     skipped,
     unjudged,
     notifyOnly,
+    proof,
   });
   // The tree may have moved while Jev was thinking.
   const after = snapshotTree(root);
@@ -217,7 +225,7 @@ export async function judge(args, config = readConfig()) {
     // debug aid only
   }
   const latency = judged.requests.reduce((n, r) => n + (r.result.latency_ms ?? 0), 0);
-  log(config, ["judge", config.mode, "verdict", root, verdict.id, verdict.look.verdict, verdict.look.p_ok, `${verdict.files.length} files`, `${verdict.debris.length} debris`, `${latency}ms`]);
+  log(config, ["judge", config.mode, "verdict", root, verdict.id, verdict.look.verdict, verdict.look.p_ok, `${verdict.files.length} files`, `${verdict.debris.length} debris`, `${verdict.unverified.length} unverified`, `${latency}ms`]);
   return { outcome: "verdict", root, verdict };
 }
 

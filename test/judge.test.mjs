@@ -266,3 +266,46 @@ test("with no prompt on record, out_of_scope is not offered as a category", asyn
   assert.ok(!kinds.includes("out_of_scope"), kinds.join(","));
   assert.equal(mock.requests[0].questions.f0_prompt, undefined);
 });
+
+test("a proof gate result for the repo lands in the verdict as unverified changes", async (t) => {
+  const mock = await startMock((id) => (id === "look" ? 0.2 : /_look$/.test(id) ? 0.1 : /_kind$/.test(id) ? "routine" : undefined));
+  t.after(() => mock.close());
+  const { env, config } = setup(mock);
+  const root = tempRepo({ "src/retry.js": "export function retry() { return 3; }\n" });
+  await judge({ cwd: root }, config); // baseline
+  await agentWrite(config, root, { "src/retry.js": "export function retry() { return 5; }\n" });
+
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { repoKey } = await import("../lib/repo.mjs");
+  const proofDir = join(env.JEV_GATES_DIR, "proof");
+  mkdirSync(proofDir, { recursive: true });
+  const payload = {
+    decision: "block",
+    repo: root,
+    judged_at: new Date().toISOString(),
+    session_id: "s1",
+    thresholds: { risk: 0.7, proof: 0.3 },
+    scored: [
+      { file: "src/retry.js", line: 1, kind: "default", summary: "value changed in retry: 3 to 5", risk: 0.92, proof: 0.04 },
+      { file: "src/retry.js", line: 1, kind: "behavior", summary: "body of retry changed", risk: 0.4, proof: 0.04 },
+      { file: "src/retry.js", line: 2, kind: "branch", summary: "branch changed", risk: 0.9, proof: 0.85 },
+    ],
+  };
+  writeFileSync(join(proofDir, `${repoKey(root)}.json`), JSON.stringify(payload));
+
+  const r = await judge({ cwd: root, reason: "stop" }, config);
+  assert.equal(r.outcome, "verdict");
+  const v = readVerdict(config, root);
+  assert.equal(v.summary.unverified, 1, "only the risky and unproven change is listed");
+  assert.deepEqual(v.unverified[0], { file: "src/retry.js", line: 1, kind: "default", summary: "value changed in retry: 3 to 5", p_risk: 0.92, p_evidence: 0.04 });
+  assert.equal(v.proof.session_id, "s1");
+
+  // A proof file from before the baseline is ignored; a different repo's file is ignored.
+  writeFileSync(join(proofDir, `${repoKey(root)}.json`), JSON.stringify({ ...payload, judged_at: "2000-01-01T00:00:00Z" }));
+  await judge({ cwd: root, reason: "stop", force: true }, config);
+  assert.equal(readVerdict(config, root).summary.unverified, 0);
+  writeFileSync(join(proofDir, `${repoKey(root)}.json`), JSON.stringify({ ...payload, repo: "/elsewhere" }));
+  await judge({ cwd: root, reason: "stop", force: true }, config);
+  assert.equal(readVerdict(config, root).unverified.length, 0);
+});

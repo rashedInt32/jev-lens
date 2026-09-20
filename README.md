@@ -61,6 +61,14 @@ and `any` casts get one more question each: would a careful developer
 delete this? Everything comes back as a number, and thresholds decide what
 you see.
 
+If [jev-gates](https://github.com/rashedInt32/jev-gates) is installed, its
+proof gate leaves a result for the same repo at the same stop: which changes
+could alter behaviour and had nothing run, tested, or checked after the edit.
+The judge waits a moment for that file and lists those changes in the verdict
+as `unverified`. The lens then shows not just which files to look at, but
+which specific changes nobody has exercised yet. `JEV_LENS_PROOF=0` turns the
+lookup off.
+
 The result lands in `~/.claude/jev-lens/repos/<repo>/verdict.json`. Anything
 can read it. jev-lens.nvim is the first thing that does.
 
@@ -139,7 +147,7 @@ Runs against a local stand-in API, no key needed.
 ## Related
 
 - [jev-lens.nvim](https://github.com/rashedInt32/jev-lens.nvim) shows the verdict in Neovim.
-- [jev-gates](https://github.com/rashedInt32/jev-gates) stops bad writes before they land. jev-lens ranks what did land. They are independent.
+- [jev-gates](https://github.com/rashedInt32/jev-gates) stops bad writes before they land. jev-lens ranks what did land. They work alone; together, the gates' proof result shows up in the lens as unverified changes.
 - [docs/SPEC.md](docs/SPEC.md) has every design decision and the file formats.
 
 ## License
