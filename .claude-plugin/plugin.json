@@ -2,7 +2,7 @@
   "name": "jev-lens",
   "displayName": "Jev Lens",
   "description": "After a Claude Code session stops, judges the agent's edits with TypeSafe Jev and writes a verdict: do you need to look, which files, what kind, and which leftover debris to strip. Pairs with jev-lens.nvim.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": {
     "name": "rashed parvez"
   },

@@ -157,6 +157,27 @@ test("a clean commit resets the baseline and clears the verdict", async (t) => {
   assert.equal(readState(config, root).baseline_reason, "commit-clean");
 });
 
+test("a commit made while the tree stays dirty drops out of the verdict", async (t) => {
+  const mock = await startMock();
+  t.after(() => mock.close());
+  const { config } = setup(mock);
+  const root = tempRepo({ "a.ts": "1\n", "b.ts": "1\n" });
+  await judge({ cwd: root }, config); // baseline
+  await agentWrite(config, root, { "a.ts": "2\n3\n4\n5\n", "b.ts": "2\n3\n4\n5\n" });
+  // a.ts lands on the branch, b.ts stays dirty. The baseline cannot advance,
+  // so only the path filter keeps a.ts out of the verdict.
+  git(root, "add", "a.ts");
+  git(root, "commit", "-q", "-m", "ship a");
+  const r = await judge({ cwd: root }, config);
+  assert.equal(r.outcome, "verdict");
+  const v = readVerdict(config, root);
+  assert.deepEqual(
+    v.files.map((f) => f.path),
+    ["b.ts"],
+  );
+  assert.equal(v.summary.files, 1);
+});
+
 test("--reviewed moves the baseline to now and marks the verdict reviewed", async (t) => {
   const mock = await startMock();
   t.after(() => mock.close());

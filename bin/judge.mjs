@@ -14,7 +14,7 @@ import { candidates, commentRemovalOnly } from "../lib/debris.mjs";
 import { clip, log, readConfig, readKey, writeJsonAtomic } from "../lib/jev.mjs";
 import { readProof } from "../lib/proof.mjs";
 import { isIgnored, redact } from "../lib/redact.mjs";
-import { changedIgnoringWhitespace, deleteVerdict, diffTrees, headTree, isClean, readState, readVerdict, repoDir, repoRoot, snapshotTree, writeState, writeVerdict } from "../lib/repo.mjs";
+import { changedIgnoringWhitespace, changedPaths, deleteVerdict, diffTrees, headTree, isClean, readState, readVerdict, repoDir, repoRoot, snapshotTree, writeState, writeVerdict } from "../lib/repo.mjs";
 import { collectRules } from "../lib/rules.mjs";
 import { composeVerdict, judgeAll } from "../lib/verdict.mjs";
 
@@ -116,7 +116,18 @@ export async function judge(args, config = readConfig()) {
     return { outcome: "no-key", root };
   }
 
-  const all = diffTrees(root, state.baseline, tree);
+  // Committing is a review, so a file whose working copy already matches HEAD
+  // is not waiting on anyone. Without this the baseline, which only advances
+  // on a clean tree, holds every commit that landed while the tree was dirty:
+  // a merge from another branch mid-session piles into every later verdict.
+  const uncommitted = head ? new Set(changedPaths(root, head, tree)) : null;
+  const all = diffTrees(root, state.baseline, tree, { only: uncommitted });
+  if (all.length === 0) {
+    deleteVerdict(config, root);
+    writeState(config, root, { ...state, last_judged_tree: tree });
+    log(config, ["judge", config.mode, "committed-only", root]);
+    return { outcome: "committed-only", root };
+  }
   const skipped = [];
   const kept = [];
   // Compare real paths: git reports /private/tmp where $TMPDIR says /tmp.

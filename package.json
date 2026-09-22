@@ -1,6 +1,6 @@
 {
   "name": "jev-lens",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Calibrated review verdicts for Claude Code edits, judged by TypeSafe Jev. Hook plugin; pairs with jev-lens.nvim.",
   "type": "module",
